@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Egg-Timer">
+<link rel="apple-touch-icon" href="egg-icon.png">
+    <link rel="manifest" href="manifest.json">
+    <title>Eieruhr</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f5fcff;
+            margin: 0;
+        }
+
+        .container {
+            text-align: center;
+        }
+
+        .heading {
+            font-size: 3em;
+            font-weight: bold;
+            color: #333;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+        }
+
+        .button-group {
+            margin: 20px 0;
+        }
+
+        .time-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            background-color: #007bff;
+            transition: background-color 0.3s, transform 0.2s;
+            width: 100%;
+        }
+
+        .time-button.active {
+            background-color: #0056b3;
+        }
+
+        .time-button:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .start-button {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .start-button:hover {
+            background-color: #218838;
+        }
+
+        .stop-button {
+            background-color: #dc3545;
+            color: white;
+            width: 100%;
+            display: none; /* Start versteckt */
+        }
+
+        .stop-button:hover {
+            background-color: #c82333;
+        }
+
+        #timerDisplay {
+            font-size: 48px;
+            margin-top: 20px;
+            color: #333;
+            font-weight: bold;
+        }
+
+        img {
+            height: 210px;
+            width: 150px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="heading">EGG-TIME</h1>
+        <center><img src="egg.png" alt="Ei"></center><br>
+        
+        <!-- Auswahl der Garstufen -->
+        <div class="button-group">
+            <button class="time-button" id="softButton" onclick="setTime('soft')">Weich-gekocht (4 Min)</button><br>
+            <button class="time-button" id="mediumButton" onclick="setTime('medium')">Mittel-gekocht (7 Min)</button><br>
+            <button class="time-button" id="hardButton" onclick="setTime('hard')">Hart-gekocht (10 Min)</button>
+        </div>
+        
+        <button class="start-button" onclick="startTimer()">Starten</button>
+        <button class="start-button" onclick="pauseTimer()">Pause</button>
+        <button class="start-button" onclick="resetTimer()">Zurücksetzen</button>
+        <div id="timerDisplay">00:00</div><br>
+        <button class="stop-button" id="stopButton" onclick="stopSound()">Stop</button>
+    </div>
+    <script>
+        let timer;
+        let soundInterval;
+        let secondsRemaining = 0;
+        let isPaused = false;
+        let selectedTime = null;
+        let audio = new Audio('alarm.mp3'); // Pfad zur Audio-Datei
+
+        function setTime(type) {
+            // Rücksetzung der aktiven Klasse von allen Buttons
+            document.querySelectorAll('.time-button').forEach(button => button.classList.remove('active'));
+
+            // Setzen der Zeit basierend auf dem ausgewählten Button
+            if (type === 'soft') {
+                secondsRemaining = 4 * 60;
+                document.getElementById('softButton').classList.add('active');
+            } else if (type === 'medium') {
+                secondsRemaining = 7 * 60;
+                document.getElementById('mediumButton').classList.add('active');
+            } else if (type === 'hard') {
+                secondsRemaining = 10 * 60;
+                document.getElementById('hardButton').classList.add('active');
+            }
+            document.getElementById('timerDisplay').textContent = formatTime(secondsRemaining);
+            selectedTime = type;
+        }
+
+        function startTimer() {
+            if (isPaused) {
+                isPaused = false;
+                return;
+            }
+
+            if (secondsRemaining === 0) {
+                alert('Bitte eine Garstufe auswählen.');
+                return;
+            }
+
+            if (timer) {
+                clearInterval(timer);
+            }
+
+            timer = setInterval(() => {
+                if (secondsRemaining <= 0) {
+                    clearInterval(timer);
+                    document.getElementById('timerDisplay').textContent = 'Zeit abgelaufen!';
+                    playSound(); // Ton abspielen, wenn die Zeit abgelaufen ist
+                    return;
+                }
+
+                secondsRemaining--;
+                document.getElementById('timerDisplay').textContent = formatTime(secondsRemaining);
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            if (timer) {
+                clearInterval(timer);
+                isPaused = true;
+            }
+        }
+
+        function resetTimer() {
+            clearInterval(timer);
+            clearInterval(soundInterval);
+            document.getElementById('timerDisplay').textContent = '00:00';
+            isPaused = false;
+            secondsRemaining = 0;
+            selectedTime = null;
+            audio.pause();
+            audio.currentTime = 0;
+
+            // Rücksetzung der aktiven Klasse von allen Buttons
+            document.querySelectorAll('.time-button').forEach(button => button.classList.remove('active'));
+
+            // Verstecken des Stop-Buttons
+            document.getElementById('stopButton').style.display = 'none';
+        }
+
+        function startSound() {
+            if (soundInterval) {
+                clearInterval(soundInterval);
+            }
+
+            // Alle 3 Sekunden den Ton abspielen
+            soundInterval = setInterval(() => {
+                audio.play();
+            }, 3000);
+        }
+
+        function stopSound() {
+            clearInterval(soundInterval);
+            soundInterval = null;
+            audio.pause();
+            audio.currentTime = 0;
+        }
+
+        function playSound() {
+            // Den Stop-Button anzeigen, wenn die Zeit abgelaufen ist
+            document.getElementById('stopButton').style.display = 'block';
+            startSound(); // Starte den Sound
+        }
+
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const sec = seconds % 60;
+            return `${String(minutes).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+        }
+    </script>
+</body>
+</html>
